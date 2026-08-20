@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .bg-grid-circuit {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 106, 0, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 106, 0, 0.04) 1px, transparent 1px);
+  }
+  
+  .bg-radial-ignite {
+    background: radial-gradient(circle at 50% 0%, rgba(255, 94, 0, 0.12) 0%, rgba(13, 14, 18, 0) 70%);
+  }
+
+  .glow-ignite-sm {
+    box-shadow: 0 0 16px -2px rgba(255, 94, 0, 0.35);
+  }
+
+  .glow-ignite-md {
+    box-shadow: 0 0 28px -4px rgba(255, 94, 0, 0.45);
+  }
+
+  .glow-ignite-border {
+    border-color: rgba(255, 106, 0, 0.4);
+    box-shadow: 0 0 12px rgba(255, 106, 0, 0.2);
+  }
+}
+
+@keyframes emberPulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(255, 94, 0, 0.5));
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 16px rgba(255, 136, 0, 0.8));
+  }
+}
+
+.animate-ember-pulse {
+  animation: emberPulse 3s ease-in-out infinite;
+}
+
+/* Custom sleek dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0d;
+}
+::-webkit-scrollbar-thumb {
+  background: #252834;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ea580c;
+}
