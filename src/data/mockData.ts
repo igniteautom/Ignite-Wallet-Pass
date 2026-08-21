@@ -7,6 +7,7 @@ export const INITIAL_BUSINESSES: Business[] = [
     category: 'coffee',
     tagline: 'Automated small-batch craft roast & nitro cold brew bar',
     address: '101 Innovation Way, Tech District',
+    city: 'San Francisco, CA',
     phone: '(555) 728-4400',
     website: 'automationsignite.com',
     themeColor: '#ea580c',
@@ -24,6 +25,11 @@ export const INITIAL_BUSINESSES: Business[] = [
     averageItemPriceUsd: 6.25,
     logoEmoji: '🔥',
     securityKeyId: 'SEC_IGNITE_2026',
+    coordinates: {
+      latitude: 37.774929,
+      longitude: -122.419416
+    },
+    hours: '6:30 AM – 8:00 PM Daily',
     settings: {
       enableDoubleStampsTuesday: true,
       enableBirthdayBonus: true,
@@ -41,6 +47,7 @@ export const INITIAL_BUSINESSES: Business[] = [
     category: 'pizza',
     tagline: 'Authentic 900° wood-fired sourdough pizzas & craft slices',
     address: '742 Little Italy Way, Suite B',
+    city: 'San Francisco, CA',
     phone: '(555) 894-2201',
     website: 'automationsignite.com/pizza',
     themeColor: '#dc2626',
@@ -58,6 +65,11 @@ export const INITIAL_BUSINESSES: Business[] = [
     averageItemPriceUsd: 16.50,
     logoEmoji: '🍕',
     securityKeyId: 'SEC_PIZZA_2026',
+    coordinates: {
+      latitude: 37.781250,
+      longitude: -122.410120
+    },
+    hours: '11:00 AM – 10:00 PM Daily',
     settings: {
       enableDoubleStampsTuesday: false,
       enableBirthdayBonus: true,
@@ -75,6 +87,7 @@ export const INITIAL_BUSINESSES: Business[] = [
     category: 'bakery',
     tagline: 'Parisian viennoiserie, artisan tarts & sourdough',
     address: '112 Saint-Germain Blvd',
+    city: 'San Francisco, CA',
     phone: '(555) 472-1088',
     website: 'automationsignite.com/bakery',
     themeColor: '#059669',
@@ -92,6 +105,11 @@ export const INITIAL_BUSINESSES: Business[] = [
     averageItemPriceUsd: 4.80,
     logoEmoji: '🥐',
     securityKeyId: 'SEC_BAKERY_2026',
+    coordinates: {
+      latitude: 37.768910,
+      longitude: -122.423180
+    },
+    hours: '7:00 AM – 6:00 PM Daily',
     settings: {
       enableDoubleStampsTuesday: true,
       enableBirthdayBonus: true,
@@ -109,6 +127,7 @@ export const INITIAL_BUSINESSES: Business[] = [
     category: 'burger',
     tagline: 'Lacy edge smash patties, smoked bacon & cold local brews',
     address: '89 Warehouse Blvd, Midtown',
+    city: 'San Francisco, CA',
     phone: '(555) 601-3390',
     website: 'automationsignite.com/grill',
     themeColor: '#c2410c',
@@ -126,6 +145,11 @@ export const INITIAL_BUSINESSES: Business[] = [
     averageItemPriceUsd: 14.00,
     logoEmoji: '🍔',
     securityKeyId: 'SEC_BURGER_2026',
+    coordinates: {
+      latitude: 37.785400,
+      longitude: -122.404500
+    },
+    hours: '11:30 AM – 11:00 PM Daily',
     settings: {
       enableDoubleStampsTuesday: true,
       enableBirthdayBonus: true,

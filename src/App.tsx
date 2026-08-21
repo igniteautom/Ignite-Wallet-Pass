@@ -22,6 +22,7 @@ import { MerchantTerminal } from './components/MerchantTerminal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { PushCampaigns } from './components/PushCampaigns';
 import { StoreCustomizer } from './components/StoreCustomizer';
+import { TableQrTentGenerator } from './components/TableQrTentGenerator';
 import { WalletInstallModal } from './components/WalletInstallModal';
 import { SocialShareModal } from './components/SocialShareModal';
 import { CustomerPreferencesModal } from './components/CustomerPreferencesModal';
@@ -48,7 +49,9 @@ import {
   Tag,
   User,
   ArrowRight,
-  Gift
+  Gift,
+  QrCode,
+  UtensilsCrossed
 } from 'lucide-react';
 
 export default function App() {
@@ -58,8 +61,8 @@ export default function App() {
   // Customer sub-tab: 'wallet' | 'deals' | 'settings'
   const [customerTab, setCustomerTab] = useState<'wallet' | 'deals' | 'settings'>('wallet');
 
-  // Merchant sub-tab: 'pos' | 'analytics' | 'campaigns' | 'studio'
-  const [merchantTab, setMerchantTab] = useState<'pos' | 'analytics' | 'campaigns' | 'studio'>('pos');
+  // Merchant sub-tab: 'pos' | 'analytics' | 'campaigns' | 'studio' | 'tables'
+  const [merchantTab, setMerchantTab] = useState<'pos' | 'analytics' | 'campaigns' | 'studio' | 'tables'>('pos');
 
   // Business state
   const [businesses, setBusinesses] = useState<Business[]>(() => {
@@ -318,6 +321,49 @@ export default function App() {
     );
   };
 
+  // Visit reward handler (20-minute geofence dwell + >30ft exit trigger)
+  const handleAwardVisitReward = (points: number, stamps: number, businessName: string) => {
+    setCustomerPasses(prev =>
+      prev.map(p => {
+        if (p.passId !== activePass.passId) return p;
+        const currentPts = p.pointsBalance ?? 250;
+        const newBalance = currentPts + points;
+        const resetStamps = (p.currentStamps + stamps) % 10;
+        const lifetimeBonus = p.totalLifetimeStamps + stamps;
+        return {
+          ...p,
+          pointsBalance: newBalance,
+          currentStamps: resetStamps,
+          totalLifetimeStamps: lifetimeBonus
+        };
+      })
+    );
+
+    const txnId = `TXN-GEO-${Math.floor(10000 + Math.random() * 90000)}`;
+    const newTx: StampTransaction = {
+      id: txnId,
+      passId: activePass.passId,
+      customerName: activePass.customerName,
+      businessId: activeBusiness.id,
+      type: 'stamp_earned',
+      stampsCount: stamps,
+      timestamp: 'Just now',
+      amountSpendUsd: 0,
+      cashierName: 'Proximity Geofence Auto-Detector',
+      notes: `20-Min In-Store Visit Verified & Exit Detected (+${points} pts, +${stamps} stamp) at ${businessName}`,
+      encryptedSignature: signTransactionReceipt(txnId, activePass.passId, stamps, 'GEO_VISIT_20MIN'),
+      verified: true
+    };
+
+    setTransactions(prev => [newTx, ...prev]);
+
+    triggerPushNotification(
+      `🎉 +${points} Points & +${stamps} Stamp Earned!`,
+      `Thanks for visiting ${businessName} for 20+ minutes! Your visit points were automatically applied on exit.`,
+      'stamp'
+    );
+  };
+
   // Redeem reward
   const handleRedeemReward = (passId: string, rewardId: string) => {
     setCustomerPasses(prev =>
@@ -384,6 +430,17 @@ export default function App() {
       `🔥 Referral Bonus Stamp Ignited!`,
       `${friendName} joined your stamp card! +1 Bonus Stamp has been added to your wallet pass.`,
       'reward'
+    );
+  };
+
+  // Handle customer scanning table QR code and joining / installing pass
+  const handleSimulateTableCustomerJoin = (tableNumber: string | number, bizId: string) => {
+    // Give 1 bonus stamp and 25 loyalty points
+    handleAddStamp(activePass.passId, 1, `Table #${tableNumber} Welcome QR Scan Bonus`, 0, `Table #${tableNumber} Join`);
+    triggerPushNotification(
+      `Table #${tableNumber} Welcome Gift Claimed! 🎁`,
+      `Thank you for joining at Table #${tableNumber}! +1 Bonus Stamp & 10% Off Table Order unlocked on your Mobile Wallet Pass.`,
+      'stamp'
     );
   };
 
@@ -595,6 +652,22 @@ export default function App() {
 
                 <button
                   onClick={() => {
+                    setMerchantTab('tables');
+                    sound.playScanBeep();
+                  }}
+                  className={`py-2 px-3.5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
+                    merchantTab === 'tables'
+                      ? 'bg-gradient-to-r from-orange-600 via-orange-500 to-amber-500 text-neutral-950 font-bold shadow-md shadow-orange-500/30'
+                      : 'text-neutral-300 hover:text-white hover:bg-neutral-900/80'
+                  }`}
+                  id="nav-merchant-tables-tab"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Table QR Stands</span>
+                </button>
+
+                <button
+                  onClick={() => {
                     setMerchantTab('studio');
                     sound.playScanBeep();
                   }}
@@ -641,10 +714,12 @@ export default function App() {
 
                 <CustomerWalletView
                   business={activeBusiness}
+                  businesses={businesses}
                   pass={activePass}
                   onAddStamp={() => handleAddStamp(activePass.passId, 1, 'Self Tap / NFC Demo')}
                   onRedeemReward={(rewardId) => handleRedeemReward(activePass.passId, rewardId)}
                   onRedeemWithPoints={handleRedeemWithPoints}
+                  onAwardVisitReward={handleAwardVisitReward}
                   onOpenSocialShare={() => setIsSocialShareOpen(true)}
                   onOpenPreferences={() => setCustomerTab('settings')}
                   onOpenWalletModal={() => setIsWalletModalOpen(true)}
@@ -720,6 +795,15 @@ export default function App() {
               />
             )}
 
+            {merchantTab === 'tables' && (
+              <TableQrTentGenerator
+                business={activeBusiness}
+                businesses={businesses}
+                onSelectBusiness={(bizId) => setActiveBusinessId(bizId)}
+                onSimulateCustomerJoin={handleSimulateTableCustomerJoin}
+              />
+            )}
+
             {merchantTab === 'studio' && (
               <StoreCustomizer
                 business={activeBusiness}
@@ -727,6 +811,7 @@ export default function App() {
                   setBusinesses(prev => prev.map(b => (b.id === updated.id ? updated : b)));
                 }}
                 onResetDefaults={handleResetDefaults}
+                onNavigateToTables={() => setMerchantTab('tables')}
               />
             )}
           </div>

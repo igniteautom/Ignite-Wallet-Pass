@@ -1,8 +1,9 @@
 {
   "name": "Automations Ignite - Smart Loyalty & Mobile Wallet Pass Platform",
-  "description": "Automations Ignite loyalty & pass automation engine featuring digital 9+1 stamp cards, Apple & Google Wallet pass integration, automated push triggers, POS scanner terminal, anti-tamper security, and real-time retention analytics.",
+  "description": "Automations Ignite loyalty & pass automation engine featuring customized table QR stands for Mobile Wallet pass downloads, digital 9+1 stamp cards, Apple & Google Wallet pass integration, automated push triggers, POS scanner terminal, anti-tamper security, and real-time retention analytics.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "geolocation"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

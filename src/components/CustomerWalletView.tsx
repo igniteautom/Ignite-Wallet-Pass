@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import confetti from 'canvas-confetti';
@@ -19,15 +19,32 @@ import {
   ShieldCheck,
   RotateCw,
   Copy,
-  Check
+  Check,
+  MapPin,
+  Navigation,
+  Timer,
+  Sliders,
+  CheckCircle2
 } from 'lucide-react';
+import { NearestLocationModal } from './NearestLocationModal';
+import {
+  formatDistance,
+  formatSecondsToTime,
+  getSortedBusinessesByDistance,
+  GEOFENCE_INSIDE_THRESHOLD_FEET,
+  VISIT_DURATION_REQUIRED_SECONDS,
+  VISIT_REWARD_POINTS,
+  VISIT_REWARD_STAMPS
+} from '../utils/geolocation';
 
 interface CustomerWalletViewProps {
   business: Business;
+  businesses?: Business[];
   pass: CustomerPass;
   onAddStamp: () => void;
   onRedeemReward: (rewardId: string) => void;
   onRedeemWithPoints: (passId: string, pointsCost: number, newReward: RewardItem) => void;
+  onAwardVisitReward?: (points: number, stamps: number, businessName: string) => void;
   onOpenSocialShare: () => void;
   onOpenPreferences: () => void;
   onOpenWalletModal: () => void;
@@ -139,10 +156,12 @@ const STORE_CATALOG: StoreRewardItem[] = [
 
 export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
   business,
+  businesses = [],
   pass,
   onAddStamp,
   onRedeemReward,
   onRedeemWithPoints,
+  onAwardVisitReward,
   onOpenSocialShare,
   onOpenPreferences,
   onOpenWalletModal,
@@ -152,11 +171,20 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
   const [selectedFeaturedId, setSelectedFeaturedId] = useState<string>('rew_nitro');
   const [showQRView, setShowQRView] = useState(false);
   const [showFullQRModal, setShowFullQRModal] = useState(false);
+  const [showNearestModal, setShowNearestModal] = useState(false);
   const [redeemingItem, setRedeemingItem] = useState<StoreRewardItem | null>(null);
   const [claimingReward, setClaimingReward] = useState<RewardItem | null>(null);
   const [isNfcTapping, setIsNfcTapping] = useState(false);
   const [qrToken, setQrToken] = useState(() => generateDynamicQRToken(pass.passId, business.id, business.securityKeyId));
   const [countdown, setCountdown] = useState(30);
+
+  // Proximity & Geofencing Visit State
+  const [simulatedDistance, setSimulatedDistance] = useState<number>(18); // default to 18 ft (in-store demo)
+  const [timeSpentSeconds, setTimeSpentSeconds] = useState<number>(0);
+  const [isQualified, setIsQualified] = useState<boolean>(false);
+  const [hasAwardedThisSession, setHasAwardedThisSession] = useState<boolean>(false);
+  const [useRealGps, setUseRealGps] = useState<boolean>(false);
+  const prevDistanceRef = useRef<number>(simulatedDistance);
 
   // Dynamic points from pass state
   const customerPoints = pass.pointsBalance ?? 250;
@@ -174,6 +202,54 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
     }, 1000);
     return () => clearInterval(timer);
   }, [pass.passId, business.id, business.securityKeyId]);
+
+  // Geofence visit timer ticker
+  const isInsideGeofence = simulatedDistance <= GEOFENCE_INSIDE_THRESHOLD_FEET;
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isInsideGeofence && !hasAwardedThisSession) {
+      interval = setInterval(() => {
+        setTimeSpentSeconds((prev) => {
+          const next = prev + 1;
+          if (next >= VISIT_DURATION_REQUIRED_SECONDS && !isQualified) {
+            setIsQualified(true);
+            sound.playRewardFanfare();
+            onTriggerPushNotification(
+              '🌟 20-Min Visit Milestone Qualified!',
+              `You've stayed 20 minutes at ${business.name}. Step outside the store (>30 ft) to automatically claim your +25 points and +1 stamp!`,
+              'stamp'
+            );
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isInsideGeofence, hasAwardedThisSession, isQualified, business.name, onTriggerPushNotification]);
+
+  // Geofence exit reward trigger (>30 ft) after 20 mins completed
+  useEffect(() => {
+    const prevDist = prevDistanceRef.current;
+    prevDistanceRef.current = simulatedDistance;
+
+    if (isQualified && !hasAwardedThisSession && simulatedDistance > GEOFENCE_INSIDE_THRESHOLD_FEET) {
+      setHasAwardedThisSession(true);
+      sound.playRewardFanfare();
+      confetti({
+        particleCount: 110,
+        spread: 75,
+        origin: { y: 0.5 },
+        colors: ['#ea580c', '#f59e0b', '#10b981', '#ffffff']
+      });
+
+      if (onAwardVisitReward) {
+        onAwardVisitReward(VISIT_REWARD_POINTS, VISIT_REWARD_STAMPS, business.name);
+      }
+    }
+  }, [simulatedDistance, isQualified, hasAwardedThisSession, business.name, onAwardVisitReward]);
 
   // Handle Contactless NFC Tap
   const handleNfcTap = () => {
@@ -250,6 +326,8 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
   const progressRatio = Math.min(100, Math.max(15, (customerPoints / targetPoints) * 100));
   const pointsAway = Math.max(0, targetPoints - customerPoints);
 
+  const dwellProgressRatio = Math.min(100, (timeSpentSeconds / VISIT_DURATION_REQUIRED_SECONDS) * 100);
+
   return (
     <div className="w-full max-w-sm sm:max-w-md mx-auto" id="customer-store-wallet-container">
       {/* Main Device Container */}
@@ -318,6 +396,80 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
             </button>
           </div>
         </motion.div>
+
+        {/* NEAREST LOCATION & AUTO-VISIT REWARDS CARD */}
+        <div
+          onClick={() => {
+            setShowNearestModal(true);
+            sound.playScanBeep();
+          }}
+          className="bg-gradient-to-r from-[#141824] via-[#10131e] to-[#151019] border border-orange-500/50 hover:border-orange-400 rounded-[22px] p-3 sm:p-3.5 cursor-pointer shadow-lg transition-all group relative overflow-hidden"
+          id="banner-nearest-location-trigger"
+        >
+          <div className="flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shrink-0 shadow-[0_0_12px_rgba(249,115,22,0.25)]">
+                <MapPin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-orange-400">
+                    Nearest Location
+                  </span>
+                  {isInsideGeofence ? (
+                    <span className="px-1.5 py-0.2 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-500/50 text-[8.5px] font-bold">
+                      IN STORE (≤30 FT)
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.2 rounded-md bg-neutral-900 text-neutral-400 text-[8.5px]">
+                      NEARBY
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs font-bold text-white truncate group-hover:text-orange-200 transition-colors">
+                  {business.name}
+                </div>
+                <div className="text-[10.5px] text-neutral-400 truncate">
+                  {business.address}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <div className="text-xs sm:text-sm font-black text-orange-400 font-mono">
+                {formatDistance(simulatedDistance)}
+              </div>
+              <span className="text-[9.5px] text-neutral-400 font-medium flex items-center justify-end gap-0.5">
+                <span>Details</span>
+                <ChevronRight className="w-3 h-3 text-orange-400" />
+              </span>
+            </div>
+          </div>
+
+          {/* Dwell Mini-Bar */}
+          <div className="mt-2.5 pt-2 border-t border-neutral-800/80 flex items-center justify-between text-[10.5px]">
+            <div className="flex items-center gap-1 text-neutral-300">
+              <Timer className="w-3 h-3 text-orange-400 shrink-0" />
+              {hasAwardedThisSession ? (
+                <span className="text-emerald-400 font-semibold">🎉 +25 pts visit reward collected!</span>
+              ) : isQualified ? (
+                <span className="text-emerald-400 font-bold">🌟 20m Done! Leave store (&gt;30ft) to collect</span>
+              ) : isInsideGeofence ? (
+                <span>
+                  Visit Time: <strong className="text-white font-mono">{formatSecondsToTime(timeSpentSeconds)}</strong>/20:00
+                </span>
+              ) : (
+                <span>Stay 20m in-store for +25 pts on exit</span>
+              )}
+            </div>
+
+            <span className="text-[10px] text-orange-400 font-bold underline underline-offset-2">
+              Simulator
+            </span>
+          </div>
+        </div>
 
         {/* FEATURED REWARDS SECTION */}
         <div className="space-y-2.5">
@@ -573,6 +725,26 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
 
       </div>
 
+      {/* NEAREST LOCATION & 20-MIN VISIT REWARD MODAL */}
+      <NearestLocationModal
+        isOpen={showNearestModal}
+        onClose={() => setShowNearestModal(false)}
+        businesses={businesses.length > 0 ? businesses : [business]}
+        activeBusiness={business}
+        pass={pass}
+        onAwardVisitReward={onAwardVisitReward || (() => {})}
+        simulatedDistance={simulatedDistance}
+        setSimulatedDistance={setSimulatedDistance}
+        timeSpentSeconds={timeSpentSeconds}
+        setTimeSpentSeconds={setTimeSpentSeconds}
+        isQualified={isQualified}
+        setIsQualified={setIsQualified}
+        hasAwardedThisSession={hasAwardedThisSession}
+        setHasAwardedThisSession={setHasAwardedThisSession}
+        useRealGps={useRealGps}
+        setUseRealGps={setUseRealGps}
+      />
+
       {/* FULL-SCREEN DEDICATED QR SCAN MODAL */}
       <AnimatePresence>
         {showFullQRModal && (
@@ -764,7 +936,7 @@ export const CustomerWalletView: React.FC<CustomerWalletViewProps> = ({
                 </div>
               </div>
 
-              {/* Single Close Option as requested */}
+              {/* Single Close Option */}
               <div className="pt-1">
                 <button
                   onClick={() => setClaimingReward(null)}

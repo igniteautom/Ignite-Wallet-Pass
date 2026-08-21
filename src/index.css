@@ -58,3 +58,21 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #ea580c;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, nav, #btn-close-wallet-modal, #modal-simulated-table-scan, .no-print {
+    display: none !important;
+  }
+  #printable-table-tent-area {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+  }
+}

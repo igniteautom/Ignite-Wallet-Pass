@@ -8,6 +8,7 @@ export interface Business {
   category: BusinessCategory;
   tagline: string;
   address: string;
+  city?: string;
   phone: string;
   website: string;
   themeColor: string; // hex or tailwind class
@@ -25,6 +26,11 @@ export interface Business {
   averageItemPriceUsd: number;
   logoEmoji: string;
   securityKeyId: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  hours?: string;
   settings: {
     enableDoubleStampsTuesday: boolean;
     enableBirthdayBonus: boolean;
@@ -35,6 +41,18 @@ export interface Business {
     cashierPin: string;
     autoTriggerWinbackDays: number;
   };
+}
+
+export interface GeoVisitSession {
+  businessId: string;
+  insideGeofence: boolean;
+  distanceFeet: number;
+  timeSpentSeconds: number;
+  requiredSeconds: number; // 20 min = 1200 seconds
+  isQualified: boolean; // has spent 20 mins inside
+  rewardAwarded: boolean;
+  lastEnteredTimestamp?: number;
+  gpsAccuracy?: number;
 }
 
 export type LoyaltyTier = 'Bronze Regular' | 'Silver Connoisseur' | 'Gold VIP' | 'Diamond Legend';
@@ -138,4 +156,31 @@ export interface ReferralRecord {
   date: string;
   status: 'registered' | 'first_stamp_earned' | 'reward_granted';
   bonusAwarded: boolean;
+}
+
+export interface TableConfig {
+  id: string;
+  tableNumber: string | number;
+  label: string; // e.g. "Table 1", "Booth 4", "Patio 2", "Bar Stool 3"
+  area: string;  // e.g. "Main Dining Room", "Outdoor Terrace", "Bar & Lounge", "Window Side"
+  activeScansCount?: number;
+  lastScannedAt?: string;
+  customWelcomeMessage?: string;
+}
+
+export interface TableTentSettings {
+  headline: string;
+  subheadline: string;
+  welcomeOfferText: string;
+  welcomePointsBonus: number;
+  welcomeStampsBonus: number;
+  tableDiscountPercent: number;
+  wifiName: string;
+  wifiPassword: string;
+  showWifi: boolean;
+  showNfcContactlessBadge: boolean;
+  showSocialHandle: boolean;
+  socialHandle: string;
+  format: 'tent_fold' | 'acrylic_disc' | 'insert_card' | 'batch_grid';
+  cardThemeStyle: 'brand' | 'dark_luxury' | 'clean_white' | 'kraft_vintage';
 }

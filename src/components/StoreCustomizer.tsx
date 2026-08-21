@@ -9,7 +9,8 @@ import {
   Check,
   Sparkles,
   Save,
-  RotateCcw
+  RotateCcw,
+  QrCode
 } from 'lucide-react';
 import { sound } from '../utils/audio';
 
@@ -17,12 +18,14 @@ interface StoreCustomizerProps {
   business: Business;
   onUpdateBusiness: (updated: Business) => void;
   onResetDefaults: () => void;
+  onNavigateToTables?: () => void;
 }
 
 export const StoreCustomizer: React.FC<StoreCustomizerProps> = ({
   business,
   onUpdateBusiness,
-  onResetDefaults
+  onResetDefaults,
+  onNavigateToTables
 }) => {
   const [formData, setFormData] = useState<Business>({ ...business });
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -120,6 +123,21 @@ export const StoreCustomizer: React.FC<StoreCustomizerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onNavigateToTables && (
+            <button
+              type="button"
+              onClick={() => {
+                onNavigateToTables();
+                sound.playScanBeep();
+              }}
+              className="px-3.5 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-300 border border-orange-500/40 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+              id="btn-goto-table-qr"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Generate Table QR Stands</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onResetDefaults}
